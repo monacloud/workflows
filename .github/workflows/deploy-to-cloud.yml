@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure GCP credentials
         id: 'auth'
@@ -55,10 +55,10 @@ jobs:
         env:
           GIT_TAG_NAME: ${{ inputs.tag }}
         run: |
-          echo "::set-output name=image::ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME"
+          echo "image=ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME" >> $GITHUB_OUTPUT
       
       - name: Deploy to Kubernetes
-        uses: Azure/k8s-deploy@v1
+        uses: Azure/k8s-deploy@v4
         with:
           manifests: |
             k8s.yaml
@@ -70,7 +70,7 @@ jobs:
             echo "SVC_INGRESS_IP=$(kubectl get svc monacloud-svc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
 
       - name: Update Cloudflare DNS records
-        uses: rez0n/create-dns-record@v2.1
+        uses: rez0n/create-dns-record@v2.2
         with:
           type: "A"
           name: "staging.monacloud.xyz"
@@ -81,6 +81,7 @@ jobs:
           zone: ${{ secrets.CLOUDFLARE_ZONE_ID }}
 
   preview-aws:
+    needs: staging-gcp
     runs-on: ubuntu-latest
     environment:
       name: preview
@@ -88,7 +89,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -108,10 +109,10 @@ jobs:
         env:
           GIT_TAG_NAME: ${{ inputs.tag }}
         run: |
-          echo "::set-output name=image::ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME"
+          echo "image=ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME" >> $GITHUB_OUTPUT
       
       - name: Deploy to Kubernetes
-        uses: Azure/k8s-deploy@v1
+        uses: Azure/k8s-deploy@v4
         with:
           manifests: |
             k8s.yaml
@@ -123,7 +124,7 @@ jobs:
             echo "SVC_INGRESS_HOSTNAME=$(kubectl get svc monacloud-svc -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')" >> $GITHUB_ENV
 
       - name: Update Cloudflare DNS records
-        uses: rez0n/create-dns-record@v2.1
+        uses: rez0n/create-dns-record@v2.2
         with:
           type: "CNAME"
           name: "preview.monacloud.xyz"
@@ -134,6 +135,7 @@ jobs:
           zone: ${{ secrets.CLOUDFLARE_ZONE_ID }}
 
   production-azure:
+    needs: preview-aws
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -141,10 +143,10 @@ jobs:
     
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         
       - name: Set context from Kubeconfig
-        uses: azure/k8s-set-context@v1
+        uses: azure/k8s-set-context@v3
         id: setcontext
         with:
           method: kubeconfig
@@ -156,10 +158,10 @@ jobs:
         env:
           GIT_TAG_NAME: ${{ inputs.tag }}
         run: |
-          echo "::set-output name=image::ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME"
+          echo "image=ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME" >> $GITHUB_OUTPUT
       
       - name: Deploy to Kubernetes
-        uses: Azure/k8s-deploy@v1
+        uses: Azure/k8s-deploy@v4
         with:
           manifests: |
             k8s.yaml
@@ -171,7 +173,7 @@ jobs:
             echo "SVC_INGRESS_IP=$(kubectl get svc monacloud-svc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
 
       - name: Update Cloudflare DNS records
-        uses: rez0n/create-dns-record@v2.1
+        uses: rez0n/create-dns-record@v2.2
         with:
           type: "A"
           name: "monacloud.xyz"
