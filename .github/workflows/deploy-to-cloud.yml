@@ -35,6 +35,9 @@ jobs:
       name: staging
       url: http://staging.monacloud.xyz
 
+    env:
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
