@@ -9,9 +9,6 @@ on:
         required: true
         type: string
         default: 'latest'
-      environment:
-        required: true
-        type: string
     secrets:
       CLUSTER_NAME:
         required: true
