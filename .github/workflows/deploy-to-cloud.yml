@@ -9,6 +9,9 @@ on:
         required: true
         type: string
         default: 'latest'
+      environment:
+        required: true
+        type: string
     secrets:
       GCP_SERVICE_ACCOUNT:
         required: true
@@ -34,9 +37,6 @@ jobs:
     environment:
       name: staging
       url: http://staging.monacloud.xyz
-
-    env:
-      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
     steps:
       - name: Checkout repo
