@@ -39,6 +39,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
+      - name: Print GCP service account
+        run: |
+          echo $GCP_SERVICE_ACCOUNT
+
       - name: Configure GCP credentials
         id: 'auth'
         uses: 'google-github-actions/auth@v0'
