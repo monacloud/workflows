@@ -1,0 +1,71 @@
+
+name: Deploy to Cloud
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The tag to deploy
+        required: true
+        type: string
+        default: 'latest'
+    secrets:
+      CLUSTER_NAME:
+        required: true
+      AZURE_KUBECONFIG:
+        required: true
+      CLOUDFLARE_TOKEN:
+        required: true
+      CLOUDFLARE_ZONE_ID:
+        required: true
+      
+jobs:
+
+  deploy-azure:
+    name: Deploy to Azure Kubernetes Service
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: http://monacloud.xyz
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        
+      - name: Set context from Kubeconfig
+        uses: azure/k8s-set-context@v3
+        id: setcontext
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.AZURE_KUBECONFIG }} 
+          context: ${{ secrets.CLUSTER_NAME }}          
+
+      - name: Get new container image tag
+        id: image-tag
+        env:
+          GIT_TAG_NAME: ${{ inputs.tag }}
+        run: |
+          echo "image=ghcr.io/$GITHUB_REPOSITORY:$GIT_TAG_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Deploy to Kubernetes
+        uses: Azure/k8s-deploy@v4
+        with:
+          manifests: |
+            k8s.yaml
+          images: |
+            ${{ steps.image-tag.outputs.image }}
+            
+      - name: Get service ingress IP address
+        run: |
+            echo "SVC_INGRESS_IP=$(kubectl get svc monacloud-svc -o jsonpath='{.status.loadBalancer.ingress[0].ip}')" >> $GITHUB_ENV
+
+      - name: Update Cloudflare DNS records
+        uses: rez0n/create-dns-record@v2.2
+        with:
+          type: "A"
+          name: "monacloud.xyz"
+          content: ${{ env.SVC_INGRESS_IP }}
+          ttl: 1
+          proxied: false
+          token: ${{ secrets.CLOUDFLARE_TOKEN }}
+          zone: ${{ secrets.CLOUDFLARE_ZONE_ID }}
